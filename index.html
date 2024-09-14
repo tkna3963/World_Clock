@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rotating Globe with Front and Back</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <script src="https://unpkg.com/topojson@3"></script> <!-- Include TopoJSON -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+      position: relative;
+    }
+
+    svg {
+      border: none;
+      /* Remove the border */
+    }
+
+    /* Clock styling */
+    #clock {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 5rem;
+      font-family: 'Noto Sans JP', sans-serif; /* Use Noto Sans JP font */
+      color: #000;
+      background: rgba(252, 249, 249, 0.566);
+      padding: 20px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- SVG container for the globe -->
+  <svg></svg>
+
+  <!-- Clock Display -->
+  <div id="clock"></div>
+
+  <script>
+    // SVGの設定
+    const stage = d3.select("svg");
+
+    // ウィンドウの高さに合わせてSVGの縦幅と横幅を調整する
+    function resizeGlobe() {
+      const windowHeight = window.innerHeight;
+      const windowWidth = window.innerWidth;
+
+      // SVGを高さに基づいてリサイズ
+      stage.attr("width", windowHeight)
+        .attr("height", windowHeight);
+
+      // 投影法を2つ定義: 180度（裏面）と90度（表面）
+      const projection180 = d3.geoOrthographic()
+        .scale(windowHeight / 2.5) // スケールは縦幅に基づく
+        .rotate([0, 0, 0])
+        .translate([windowHeight / 2, windowHeight / 2])
+        .clipAngle(180); // 180度で裏面をクリッピング
+
+      const projection90 = d3.geoOrthographic()
+        .scale(windowHeight / 2.5) // スケールは縦幅に基づく
+        .rotate([0, 0, 0])
+        .translate([windowHeight / 2, windowHeight / 2])
+        .clipAngle(90); // 90度で表面をクリッピング
+
+      const backPath = d3.geoPath().projection(projection180);
+      const frontPath = d3.geoPath().projection(projection90);
+
+      // 地図データを読み込む（先にTopoJSONをGeoJSONに変換する）
+      d3.json("https://unpkg.com/world-atlas@1/world/110m.json").then(function (json) {
+        const geojson = topojson.feature(json, json.objects.countries).features;
+
+        // 地形(裏)を描画
+        const backMap = stage.append("path")
+          .datum({ type: "FeatureCollection", features: geojson })
+          .attr("d", backPath)
+          .attr("fill-opacity", 1)
+          .attr("fill", "#EDE9F1") // 裏の色
+          .attr("stroke", "none");
+
+        // 地形(表)を描画
+        const frontMap = stage.append("path")
+          .datum({ type: "FeatureCollection", features: geojson })
+          .attr("d", frontPath)
+          .attr("fill-opacity", 1)
+          .attr("fill", "#FD81DB") // 表の色
+          .attr("stroke", "none");
+
+        // 回転開始
+        rotateGlobe(projection180, projection90, backPath, frontPath);
+      });
+    }
+
+    /* 地形を回転させる関数 */
+    function rotateGlobe(projection180, projection90, backPath, frontPath) {
+      let i = 0;
+      setInterval(function () {
+        i = i + 0.5;
+
+        projection180
+          .rotate([i, -20, 0]) // 180度投影法の回転
+          .scale(window.innerHeight / 2.5)
+          .translate([window.innerHeight / 2, window.innerHeight / 2]);
+
+        projection90
+          .rotate([i, -20, 0]) // 90度投影法の回転
+          .scale(window.innerHeight / 2.5)
+          .translate([window.innerHeight / 2, window.innerHeight / 2]);
+
+        stage.selectAll("path").attr("d", function (d, i) {
+          return i === 0 ? backPath(d) : frontPath(d); // 0:裏、1:表
+        });
+      }, 60);
+    }
+
+    // Clock functionality
+    function updateClock() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const milliseconds = String(now.getMilliseconds()).padStart(2, '0').substring(0, 2); // Only two digits for milliseconds
+
+      document.getElementById('clock').innerHTML = `${hours}:${minutes}:${seconds}:${milliseconds}`;
+    }
+
+    // Update the clock every 10 milliseconds
+    setInterval(updateClock, 10);
+
+    // Resize globe when the window size changes
+    window.addEventListener('resize', resizeGlobe);
+
+    // Initial call to display globe
+    resizeGlobe();
+  </script>
+</body>
+
+</html>

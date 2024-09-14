@@ -35,8 +35,6 @@
       font-family: 'Noto Sans JP', sans-serif;
       color: #000;
       background: rgba(252, 249, 249, 0.566);
-      padding: 20px;
-      border-radius: 10px;
     }
   </style>
 </head>
@@ -120,7 +118,7 @@
 
       document.getElementById('clock').innerHTML = `${hours}:${minutes}:${seconds}:${milliseconds}`;
 
-      if (minutes === '59' && seconds === '55') {
+      if (minutes === '59' && seconds === '56') {
         const audio = document.getElementById("Time_Signal");
         audio.play()
       }
